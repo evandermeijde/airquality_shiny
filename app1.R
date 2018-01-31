@@ -1,0 +1,72 @@
+#
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+
+library(shiny)
+library(scatterplot3d)
+
+airquality$any_NA <- ifelse(is.na(airquality$Ozone),1,ifelse(is.na(airquality$Solar.R),1,
+                                                             ifelse(is.na(airquality$Wind),1,
+                                                                    ifelse(is.na(airquality$Temp),1,0))))
+data <- subset(airquality,any_NA==0)[,c(1,2,3,4)]
+
+
+# Define UI for application that performs k-means clustering
+ui <- 
+  
+  pageWithSidebar(
+    headerPanel('Airquality k-means clustering'),
+    sidebarPanel(
+      selectInput('xcol', 'X Variable', names(data)),
+      selectInput('ycol', 'Y Variable', names(data),
+                  selected=names(data)[[2]]),
+      selectInput('zcol', 'Z Variable', names(data),
+                  selected=names(data)[[3]]),
+      numericInput('clusters', 'Cluster count', 3,
+                   min = 1, max = 9)
+    ),
+    mainPanel(
+      plotOutput('plot1')
+    )
+  )
+
+
+# Define server logic required to draw a plot
+server <- 
+  
+  function(input, output, session) {
+    
+    # Combine the selected variables into a new data frame
+    selectedData <- reactive({
+      data[, c(input$xcol, input$ycol, input$zcol)]
+    })
+    
+    clusters <- reactive({
+      kmeans(selectedData(), input$clusters)
+    })
+    
+    output$plot1 <- renderPlot({
+      palette(c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+                "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"))
+      
+      par(mar = c(5.1, 4.1, 0, 1))
+      scatterplot3d(x=selectedData()[,1],
+                    y=selectedData()[,2],
+                    z=selectedData()[,3],
+           color = clusters()$cluster,
+           pch = 20 )
+      points(clusters()$centers, pch = 4, cex = 4, lwd = 4)
+    })
+    
+  }
+
+
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
